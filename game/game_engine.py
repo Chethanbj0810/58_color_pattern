@@ -43,8 +43,6 @@ class GameEngine:
     def start_next_round(self):
         new_color = random.randint(0, 3)
 
-        # BUG SYMPTOM:
-        # Sequence duplicates previous steps and grows exponentially each round.
         self.sequence += self.sequence + [new_color]
         
         self.player_input.clear()

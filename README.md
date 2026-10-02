@@ -43,19 +43,19 @@ Each task must be completed using an iterative process involving LLM suggestions
 
 ### Task 1: Fix the sequence duplication bug
 
-Each round is supposed to append only one new random color to the existing sequence. In game_engine.start_next_round(), the sequence update line performs self.sequence += self.sequence + [new_color] instead of appending new_color to self.sequence. This causes the pattern length to grow exponentially and duplicates previous entries. Correct the sequence addition logic so only one single color index is added each round.
+Advancing to the next round causes the memory pattern to explode in length rather than extending by one step. Ensure that each successful round strictly appends a single new color step to the active sequence.
 
 ### Task 2: Implement dynamic playback acceleration
 
-Currently, the sequence flashes at a static 450ms flash duration and 200ms pause duration across all rounds. In game_engine.start_next_round(), adjust self.flash_duration and self.pause_duration to decrease gradually as self.score increases (down to a minimum speed threshold like 180ms flash and 80ms pause), making playback faster and more challenging in later rounds.
+Sequences flash at the exact same slow, fixed speed throughout every round. Make the playback dynamically accelerate by decreasing the flash and pause durations as the player advances further into higher rounds.
 
 ### Task 3: Implement sound effects or audio frequencies
 
-The game currently relies entirely on silent visual flashes. Use pygame.mixer or synthesize simple square/sine audio tones mapped to each color ID (e.g., Red: 261Hz, Blue: 329Hz, Green: 392Hz, Yellow: 523Hz). Play the respective tone whenever a button flashes during WATCH mode and when the player clicks it during PLAYER_TURN.
+The memory puzzle is completely silent, relying only on visual illumination. Assign a distinct musical pitch or audio frequency to each of the four colored pads that sounds whenever a tile is flashed or clicked.
 
-### Task 4: Implement a round countdown timer
+### Task 4: Implement a Player Turn Input Timer
 
-During PLAYER_TURN, the player can currently wait indefinitely before making their move. Add a per-round or per-step countdown timer bar displayed in the HUD. If the timer reaches 0 before the player completes the required sequence, transition the game state to GAME_OVER.
+Players currently have unlimited time to study the board between clicks. Introduce a dynamic countdown timer bar for the player's turn that triggers a game over if time expires before completing the pattern.
 
 ---
 

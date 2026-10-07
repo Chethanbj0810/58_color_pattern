@@ -37,6 +37,10 @@ class GameEngine:
         self.player_lit_start = 0
         self.player_flash_duration = 150
 
+        # Task 4: Player input timer
+        self.player_turn_start = 0
+        self.player_turn_time = 5000
+
         # Task 3: Initialize sound system
         pygame.mixer.init()
 
@@ -50,6 +54,7 @@ class GameEngine:
 
         self.font_title = pygame.font.SysFont(None, 40)
         self.font_medium = pygame.font.SysFont(None, 28)
+        self.font_small = pygame.font.SysFont(None, 22)
 
         self.start_next_round()
 
@@ -94,6 +99,14 @@ class GameEngine:
             200 - (len(self.sequence) - 1) * 15
         )
 
+        # Task 4: Set player timer for this round
+        self.player_turn_time = max(
+            2500,
+            5000 - (len(self.sequence) - 1) * 250
+        )
+
+        self.player_turn_start = 0
+
         self.player_input.clear()
         self.state = "WATCH"
         self.showing_step = 0
@@ -136,7 +149,16 @@ class GameEngine:
                         self.play_sound(next_id)
 
                     else:
+                        # Task 4: Start player timer
                         self.state = "PLAYER_TURN"
+                        self.player_turn_start = now
+
+        # Task 4: Check player input timer
+        elif self.state == "PLAYER_TURN":
+            elapsed = now - self.player_turn_start
+
+            if elapsed >= self.player_turn_time:
+                self.state = "GAME_OVER"
 
     def handle_event(self, event):
         if self.state == "GAME_OVER":
@@ -178,6 +200,8 @@ class GameEngine:
             btn.is_lit = False
 
         self.player_lit_button = None
+        self.player_turn_start = 0
+
         self.start_next_round()
 
     def render(self, screen):
@@ -237,9 +261,73 @@ class GameEngine:
             )
         )
 
+        # Draw buttons
         for btn in self.buttons:
             btn.render(screen)
 
+        # Task 4: Draw countdown timer
+        if self.state == "PLAYER_TURN":
+            now = pygame.time.get_ticks()
+            elapsed = now - self.player_turn_start
+
+            remaining = max(
+                0,
+                self.player_turn_time - elapsed
+            )
+
+            time_left = remaining / 1000
+
+            # Timer dimensions
+            timer_width = 300
+            timer_height = 18
+            timer_x = self.width // 2 - timer_width // 2
+            timer_y = 485
+
+            # Background
+            pygame.draw.rect(
+                screen,
+                (60, 60, 70),
+                (
+                    timer_x,
+                    timer_y,
+                    timer_width,
+                    timer_height
+                ),
+                border_radius=8
+            )
+
+            # Remaining time
+            progress = remaining / self.player_turn_time
+            progress_width = int(timer_width * progress)
+
+            if progress_width > 0:
+                pygame.draw.rect(
+                    screen,
+                    (80, 220, 120),
+                    (
+                        timer_x,
+                        timer_y,
+                        progress_width,
+                        timer_height
+                    ),
+                    border_radius=8
+                )
+
+            timer_text = self.font_small.render(
+                f"Time: {time_left:.1f}s",
+                True,
+                (245, 245, 245)
+            )
+
+            screen.blit(
+                timer_text,
+                (
+                    self.width // 2 - timer_text.get_width() // 2,
+                    505
+                )
+            )
+
+        # Game over screen
         if self.state == "GAME_OVER":
             overlay = pygame.Surface(
                 (self.width, self.height),

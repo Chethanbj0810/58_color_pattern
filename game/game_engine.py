@@ -44,6 +44,8 @@ class GameEngine:
         new_color = random.randint(0, 3)
 
         self.sequence.append(new_color)
+        self.flash_duration = max(180, 450 - (len(self.sequence) - 1) * 30)
+        self.pause_duration = max(80, 200 - (len(self.sequence) - 1) * 15)
         
         self.player_input.clear()
         self.state = "WATCH"

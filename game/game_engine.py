@@ -1,4 +1,6 @@
 import random
+import math
+import array
 import pygame
 from game.color_button import ColorButton
 
@@ -35,24 +37,72 @@ class GameEngine:
         self.player_lit_start = 0
         self.player_flash_duration = 150
 
+        # Task 3: Initialize sound system
+        pygame.mixer.init()
+
+        # Different sound frequency for each color
+        self.sounds = {
+            0: self._generate_tone(261.63),  # Red
+            1: self._generate_tone(329.63),  # Blue
+            2: self._generate_tone(392.00),  # Green
+            3: self._generate_tone(523.25),  # Yellow
+        }
+
         self.font_title = pygame.font.SysFont(None, 40)
         self.font_medium = pygame.font.SysFont(None, 28)
 
         self.start_next_round()
 
+    # Task 3: Generate sound tone
+    def _generate_tone(self, frequency, duration=150):
+        sample_rate = 44100
+        samples = int(sample_rate * duration / 1000)
+
+        waveform = array.array("h")
+
+        for i in range(samples):
+            value = int(
+                32767
+                * 0.25
+                * math.sin(
+                    2 * math.pi * frequency * i / sample_rate
+                )
+            )
+            waveform.append(value)
+
+        return pygame.mixer.Sound(buffer=waveform.tobytes())
+
+    # Task 3: Play sound for a color
+    def play_sound(self, color_id):
+        if color_id in self.sounds:
+            self.sounds[color_id].play()
+
     def start_next_round(self):
         new_color = random.randint(0, 3)
 
+        # Task 1: Add exactly one new color
         self.sequence.append(new_color)
-        self.flash_duration = max(180, 450 - (len(self.sequence) - 1) * 30)
-        self.pause_duration = max(80, 200 - (len(self.sequence) - 1) * 15)
-        
+
+        # Task 2: Increase playback speed as rounds increase
+        self.flash_duration = max(
+            180,
+            450 - (len(self.sequence) - 1) * 30
+        )
+
+        self.pause_duration = max(
+            80,
+            200 - (len(self.sequence) - 1) * 15
+        )
+
         self.player_input.clear()
         self.state = "WATCH"
         self.showing_step = 0
         self.step_start_time = pygame.time.get_ticks()
         self.is_flashing = True
         self.buttons[self.sequence[0]].is_lit = True
+
+        # Task 3: Play sound when first tile flashes
+        self.play_sound(self.sequence[0])
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -70,14 +120,21 @@ class GameEngine:
                     self.buttons[current_btn_id].is_lit = False
                     self.is_flashing = False
                     self.step_start_time = now
+
             else:
                 if now - self.step_start_time >= self.pause_duration:
                     self.showing_step += 1
+
                     if self.showing_step < len(self.sequence):
                         next_id = self.sequence[self.showing_step]
+
                         self.buttons[next_id].is_lit = True
                         self.is_flashing = True
                         self.step_start_time = now
+
+                        # Task 3: Play sound for each flashed tile
+                        self.play_sound(next_id)
+
                     else:
                         self.state = "PLAYER_TURN"
 
@@ -93,6 +150,9 @@ class GameEngine:
                     btn.is_lit = True
                     self.player_lit_button = btn
                     self.player_lit_start = pygame.time.get_ticks()
+
+                    # Task 3: Play sound when player clicks
+                    self.play_sound(btn.color_id)
 
                     self.register_player_click(btn.color_id)
                     break
@@ -113,38 +173,120 @@ class GameEngine:
         self.sequence.clear()
         self.player_input.clear()
         self.score = 0
+
         for btn in self.buttons:
             btn.is_lit = False
+
         self.player_lit_button = None
         self.start_next_round()
 
     def render(self, screen):
         screen.fill((22, 24, 30))
 
-        title_surf = self.font_title.render("Memory Pattern Arena", True, (245, 245, 245))
-        screen.blit(title_surf, (self.width // 2 - title_surf.get_width() // 2, 20))
+        title_surf = self.font_title.render(
+            "Memory Pattern Arena",
+            True,
+            (245, 245, 245)
+        )
 
-        score_surf = self.font_medium.render(f"Score: {self.score}", True, (255, 220, 80))
-        screen.blit(score_surf, (self.width // 2 - score_surf.get_width() // 2, 60))
+        screen.blit(
+            title_surf,
+            (
+                self.width // 2 - title_surf.get_width() // 2,
+                20
+            )
+        )
 
-        status_text = "Watch the pattern..." if self.state == "WATCH" else "Your turn: Click the pattern!"
-        status_color = (190, 195, 205) if self.state == "WATCH" else (80, 240, 130)
-        status_surf = self.font_medium.render(status_text, True, status_color)
-        screen.blit(status_surf, (self.width // 2 - status_surf.get_width() // 2, 95))
+        score_surf = self.font_medium.render(
+            f"Score: {self.score}",
+            True,
+            (255, 220, 80)
+        )
+
+        screen.blit(
+            score_surf,
+            (
+                self.width // 2 - score_surf.get_width() // 2,
+                60
+            )
+        )
+
+        status_text = (
+            "Watch the pattern..."
+            if self.state == "WATCH"
+            else "Your turn: Click the pattern!"
+        )
+
+        status_color = (
+            (190, 195, 205)
+            if self.state == "WATCH"
+            else (80, 240, 130)
+        )
+
+        status_surf = self.font_medium.render(
+            status_text,
+            True,
+            status_color
+        )
+
+        screen.blit(
+            status_surf,
+            (
+                self.width // 2 - status_surf.get_width() // 2,
+                95
+            )
+        )
 
         for btn in self.buttons:
             btn.render(screen)
 
         if self.state == "GAME_OVER":
-            overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            overlay = pygame.Surface(
+                (self.width, self.height),
+                pygame.SRCALPHA
+            )
+
             overlay.fill((0, 0, 0, 200))
             screen.blit(overlay, (0, 0))
 
-            over_surf = self.font_title.render("WRONG PATTERN! GAME OVER", True, (240, 70, 70))
-            screen.blit(over_surf, (self.width // 2 - over_surf.get_width() // 2, self.height // 2 - 40))
+            over_surf = self.font_title.render(
+                "WRONG PATTERN! GAME OVER",
+                True,
+                (240, 70, 70)
+            )
 
-            final_score_surf = self.font_medium.render(f"Final Score: {self.score}", True, (255, 255, 255))
-            screen.blit(final_score_surf, (self.width // 2 - final_score_surf.get_width() // 2, self.height // 2 + 10))
+            screen.blit(
+                over_surf,
+                (
+                    self.width // 2 - over_surf.get_width() // 2,
+                    self.height // 2 - 40
+                )
+            )
 
-            restart_surf = self.font_medium.render("Press [R] to Play Again", True, (200, 200, 200))
-            screen.blit(restart_surf, (self.width // 2 - restart_surf.get_width() // 2, self.height // 2 + 50))
+            final_score_surf = self.font_medium.render(
+                f"Final Score: {self.score}",
+                True,
+                (255, 255, 255)
+            )
+
+            screen.blit(
+                final_score_surf,
+                (
+                    self.width // 2 - final_score_surf.get_width() // 2,
+                    self.height // 2 + 10
+                )
+            )
+
+            restart_surf = self.font_medium.render(
+                "Press [R] to Play Again",
+                True,
+                (200, 200, 200)
+            )
+
+            screen.blit(
+                restart_surf,
+                (
+                    self.width // 2 - restart_surf.get_width() // 2,
+                    self.height // 2 + 50
+                )
+            )
